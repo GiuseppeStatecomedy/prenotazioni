@@ -105,6 +105,7 @@
     <div class="f"><label>Link Google Maps (facoltativo)</label><input data-k="evento_maps"></div>
     <div class="f"><label>Descrizione</label><textarea data-k="evento_descrizione"></textarea></div>
     <div class="f"><label>URL immagine / locandina (facoltativo)</label><input data-k="immagine_url" placeholder="https://…/locandina.jpg"></div>
+    <div class="f"><label>Mostra il logo in alto</label><select data-k="mostra_logo"><option value="NO">NO</option><option value="SI">SI</option></select></div>
     <div class="f"><label>URL logo (vuoto = logo State Comedy incluso)</label><input data-k="logo_url" placeholder="https://…/logo.png"></div>
     <div class="f"><label>Colore principale</label><input data-k="colore_accento" type="color" style="height:46px;padding:4px"></div>
 
@@ -149,7 +150,7 @@
 
 <script>
 /* Incolla qui lo stesso URL /exec usato in index.html */
-const API_URL = 'INCOLLA_QUI_URL_APPS_SCRIPT';
+const API_URL = 'https://script.google.com/macros/s/AKfycbyZtEd3Bs3WY6Fe9msFnVUHigKlqMrxSP78t0HUnodNDqkOep9M9oxSkvXb4odTbvI/exec';
 
 const $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
