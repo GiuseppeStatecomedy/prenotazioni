@@ -20,6 +20,9 @@
   button{font:600 15px system-ui,sans-serif;border-radius:10px;border:0;padding:11px 14px;cursor:pointer;background:var(--acc);color:#111}
   button.sec{background:var(--card);color:var(--txt);border:1.5px solid var(--line)}
   button.sm{padding:7px 10px;font-size:13px}
+  a.btn-a{display:inline-block;font:600 13px system-ui,sans-serif;border-radius:10px;padding:7px 10px;background:var(--card);color:var(--txt);border:1.5px solid var(--line);text-decoration:none}
+  .ph{font-size:12px;color:var(--mut);margin:-4px 0 10px;line-height:1.5}
+  .ph code{color:var(--acc)}
   button.danger{background:transparent;color:var(--err);border:1.5px solid #ff6b6b55}
   button[disabled]{opacity:.5}
   .tabs{display:flex;gap:6px;position:sticky;top:0;background:var(--bg);padding:8px 0;z-index:3}
@@ -119,6 +122,7 @@
     <div class="f"><label>Email di conferma dopo il pagamento</label><select data-k="email_conferma"><option>SI</option><option>NO</option></select></div>
 
     <h3>Biglietti</h3>
+    <p class="ph">Per ogni biglietto puoi scrivere il testo che si apre già compilato con il pulsante ✉️ Scrivi mail. Se lasci vuoto si usa un testo standard. Puoi usare: <code>{nome}</code> <code>{cognome}</code> <code>{biglietto}</code> <code>{pacchetto}</code> <code>{evento}</code> <code>{data}</code> <code>{ora}</code> <code>{luogo}</code> <code>{maps}</code> <code>{codice}</code></p>
     <div id="edBiglietti"></div>
     <button class="sec sm" onclick="addBiglietto()">+ Aggiungi biglietto</button>
 
@@ -225,6 +229,7 @@ function card(r) {
     '<div class="id">' + id + '</div></div><div style="text-align:right"><span class="tag t-' + esc(st.split(' ')[0]) + '">' + esc(st) + '</span>' +
     (r['Check-in'] ? '<br><span class="tag in" style="margin-top:4px">Entrato ' + esc(String(r['Check-in']).slice(11)) + '</span>' : '') + '</div></div>' +
     '<div class="mut" style="margin-top:6px">🎟 ' + esc(r['Biglietto']) + ' · €' + esc(r['Prezzo']) + '</div>' + food +
+    (r['Email inviata'] ? '<div class="mut" style="margin-top:4px">✉️ Conferma automatica inviata il ' + esc(r['Email inviata']) + '</div>' : '') +
     (r['Allergie / note'] ? '<div style="margin-top:4px;color:var(--warn);font-size:13px">⚠️ ' + esc(r['Allergie / note']) + '</div>' : '') +
     '<div class="det' + (OPEN.has(r['ID']) ? ' show' : '') + '">📞 <b>' + esc(r['Telefono']) + '</b> · ✉️ <b>' + esc(r['Email']) + '</b><br>CF <b>' + esc(r['Codice fiscale']) +
     '</b><br>Nato/a il ' + esc(r['Data nascita']) + ' a ' + esc(r['Luogo nascita']) + '<br>Prenotato il ' + esc(r['Data prenotazione']) +
@@ -233,10 +238,31 @@ function card(r) {
     (st !== 'Pagato' ? '<button class="sm" onclick="setStato(\'' + id + '\',\'Pagato\')">✓ Pagato</button>' : '') +
     (r['Check-in'] ? '<button class="sec sm" onclick="checkin(\'' + id + '\',\'NO\')">Annulla ingresso</button>'
                    : '<button class="sec sm" onclick="checkin(\'' + id + '\',\'SI\')">→ Segna ingresso</button>') +
+    (r['Email'] ? '<a class="btn-a sm" target="_blank" rel="noopener" href="' + esc(mailLink(r)) + '">✉️ Scrivi mail</a>' : '') +
     '<button class="sec sm" onclick="toggleDet(\'' + id + '\')">Dettagli</button>' +
     (st !== 'Annullata' ? '<button class="danger sm" onclick="setStato(\'' + id + '\',\'Annullata\')">Annulla</button>'
                         : '<button class="sec sm" onclick="setStato(\'' + id + '\',\'In attesa\')">Ripristina</button>') +
     '</div></div>';
+}
+const MAIL_OGG = 'Ci vediamo a {evento}!';
+const MAIL_TXT = 'Ciao {nome},\n\nti confermiamo la tua prenotazione per {evento}.\n\n📅 {data} · ore {ora}\n📍 {luogo}\n🎟 {biglietto}{riga_food}\n\nTi aspettiamo!';
+const IS_MOBILE = /Android|iPhone|iPad|iPod|Mobi/i.test(navigator.userAgent);
+function mailLink(r) {
+  let big = {};
+  try { big = JSON.parse(CFG.biglietti || '[]').find(b => b.nome === r['Biglietto']) || {}; } catch (_) {}
+  const v = {
+    nome: r['Nome'], cognome: r['Cognome'], biglietto: r['Biglietto'], pacchetto: r['Pacchetto'] || '',
+    evento: CFG.evento_titolo || '', data: CFG.evento_data || '', ora: CFG.evento_ora || '',
+    luogo: CFG.evento_luogo || '', maps: CFG.evento_maps || '', codice: r['ID'],
+    riga_food: r['Pacchetto'] ? '\n🍽 ' + r['Pacchetto'] : ''
+  };
+  const fill = t => String(t).replace(/\{(\w+)\}/g, (m, k) => (k in v ? v[k] : m));
+  const to = String(r['Email']).trim();
+  const su = fill(big.email_oggetto || MAIL_OGG);
+  const body = fill(big.email_testo || MAIL_TXT);
+  // computer: pagina di scrittura di Gmail · telefono: app di posta (Gmail se è quella predefinita)
+  if (!IS_MOBILE) return 'https://mail.google.com/mail/?view=cm&fs=1&to=' + encodeURIComponent(to) + '&su=' + encodeURIComponent(su) + '&body=' + encodeURIComponent(body);
+  return 'mailto:' + encodeURIComponent(to).replace(/%40/g, '@') + '?subject=' + encodeURIComponent(su) + '&body=' + encodeURIComponent(body.replace(/\r?\n/g, '\r\n'));
 }
 function toggleDet(id) { OPEN.has(id) ? OPEN.delete(id) : OPEN.add(id); renderList(); }
 
@@ -303,6 +329,9 @@ function drawBig() {
     '<input placeholder="Prezzo €" inputmode="decimal" value="' + esc(b.prezzo) + '" oninput="BIG[' + i + '].prezzo=this.value"></div>' +
     '<div class="f"><input placeholder="Descrizione" value="' + esc(b.descrizione) + '" oninput="BIG[' + i + '].descrizione=this.value"></div>' +
     '<div class="f"><input placeholder="Link Stripe (https://buy.stripe.com/…)" value="' + esc(b.stripe) + '" oninput="BIG[' + i + '].stripe=this.value"></div>' +
+    '<div class="lbl" style="margin-top:6px">Email per chi ha questo biglietto</div>' +
+    '<div class="f"><input placeholder="Oggetto email" value="' + esc(b.email_oggetto || '') + '" oninput="BIG[' + i + '].email_oggetto=this.value"></div>' +
+    '<div class="f"><textarea style="min-height:150px" placeholder="Testo email (vuoto = testo standard)" oninput="BIG[' + i + '].email_testo=this.value">' + esc(b.email_testo || '') + '</textarea></div>' +
     '<div class="top"><label class="chk"><input type="checkbox"' + (b.food ? ' checked' : '') + ' onchange="BIG[' + i + '].food=this.checked">Include food + drink (chiede pacchetto e drink)</label>' +
     '<button class="danger sm" onclick="BIG.splice(' + i + ',1);drawBig()">Elimina</button></div></div>').join('');
 }
